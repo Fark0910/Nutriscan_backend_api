@@ -1,0 +1,99 @@
+
+body{
+    background: url('/images/Foodleztrial.png') center center ;
+    
+
+}
+.flexer{
+    
+    display: flex;
+ 
+    
+    justify-content:right;
+    margin-top: 5rem;
+    margin-right: 3rem;
+    width:100%;
+   
+    height: 30rem;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    
+    
+    
+    
+}
+.insider{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color:rgba(245, 245, 245, 0.603);
+    border-radius: 3rem;
+    width: 50%;
+    max-width: 700px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    font-size:1em;
+}
+.watcher{
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.507));
+    margin-right: 6rem;
+    margin-top: -2rem;
+    height: 34rem;
+    width:37rem;
+    
+    max-width: 1000px;
+    opacity: 0.98;
+}
+.nutribtn {
+    background-color: #4caf4fb7;
+    border: none;
+    color: white;
+    padding: 14px 28px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .nutribtn:hover {
+    background-color:  #4caf4fb7;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+  }
+  
+/*add responsive ness here*/
+@media screen and (max-width:912px){
+    .flexer{
+        margin-left: 4rem;
+        height:50rem;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding-right: 1rem;
+        padding-left: 1rem;
+        width:100%;
+        
+        
+    }
+    .insider{
+        max-width: 1000px;
+        min-width:300px;
+        width: 100%;
+        font-size: 0.8em;
+    }
+  
+    .watcher{
+        max-width:400px;
+        width:100%;
+        height:auto;
+    }
+    h1{
+        text-align: center;
+        font-size: 1.7em;
+    }
+   
+
+    
+}
