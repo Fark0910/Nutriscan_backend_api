@@ -1,18 +1,13 @@
-# 🍽️ NutriScan Backend – Food Suitability Analysis API & Simulator
+# 🍽️ NutriScan Backend – Food Suitability Analysis API 
 
 This is the backend system for the NutriScan wearable project. It handles barcode-based food product analysis by decoding the EAN number, fetching product details, and matching ingredients with user-specific dietary restrictions. This backend is built with **Node.js**, **Express.js**, and integrates with **Firebase** for user data and result storage.
 
 ---
 
-## 🧠 Purpose
-
-Unlike simple APIs, this project also includes a **simulated (fake) backend flow** for testing without hardware. It's useful for frontend development, mock runs, and debugging — enabling end-to-end simulation of how the NutriScan wearable interacts with the system.
-
----
 
 ## 🚀 Live Server
 
-🔗 Hosted API: [https://barcodedecoder.onrender.com](https://barcodedecoder.onrender.com)
+🔗 Hosted API: [https://nutriscan-backend-api.onrender.com](https://nutriscan-backend-api.onrender.com)
 
 ---
 
