@@ -1,7 +1,7 @@
 require('dotenv').config();
 const GoogleGenAI = require('@google/genai').GoogleGenAI;
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const ai = new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY});
 const gem=async(texting)=>{ 
     const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",

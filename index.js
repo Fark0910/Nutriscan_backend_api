@@ -30,7 +30,7 @@ const userpref=require('./standard.js')
 //------------compare user preference,standards and recieved from product scan----------------/
 //New Improved version
 async function compareWithStandards(productObj, standards, userPrefs = {}) {
-  console.log("Comparing product:", productObj.title);
+  //console.log("Comparing product:", productObj.title);
   const prompt = `You are a Health Food Minister AI, an expert in food safety and nutrition regulation.  
 Your task is to evaluate a product based on three inputs:  
 - product information:-${JSON.stringify(productObj)} → contains product name(title), nutrition facts, and ingredients.  
@@ -45,12 +45,11 @@ In your evaluation:
 - If any user allergens or flagged ingredients are present, mention them clearly.
 - If the product contains any potentially harmful chemical (even if not listed in productStandards), use your knowledge to identify and flag it (e.g., artificial colorants, preservatives, trans fat, etc.).
 - If user preferences are missing and empty, rely solely on product standards for evaluation, and use general health guidelines beyond standards if needed.
-- If product information is incomplete that is ingredients and nutrition are not complete use title and your professional knowledge to infer potential risks based on available data from various best sources.
 Your tone: professional, health-conscious, and factual — like an FSSAI or WHO nutrition report.Dont hallucinate and generate wrong output and consider whats given
 
 Output Format (Strictly JSON, nothing else):
 {
-  "title": "<product title take it from product information>",
+  "title": "<product title take it from product information if its not present then write "No Barcode image">",
   "status": "active",
   "alerts": [
     {
@@ -62,7 +61,7 @@ Output Format (Strictly JSON, nothing else):
   try{
     const aiResp = await gem(prompt);
     const its=await parsing(aiResp)
-    console.log(prompt)
+    //console.log(prompt)
     return its;
 } catch(error){
   return error
@@ -186,7 +185,7 @@ async function processProductData(response,num) {
   }`
     const aiResp = await gem(findfromEan);
     const its=await parsing(aiResp)
-    console.log(findfromEan)
+    //console.log(findfromEan)
     return its
 
 
@@ -251,10 +250,11 @@ const barcodelookup=async(num)=>{
            const randomkey = Math.floor(Math.random() * 4);
            const keyz=keys[randomkey]
            console.log("Barcodelookup key used")
-           let taker="https://api.barcodelookup.com/v3/products?barcode="+`${num}`+`&formatted=y&key=${process.env.farking}`;
+           let taker="https://api.barcodelookup.com/v3/products?barcode="+`${num}`+`&formatted=y&key=${process.env.yashraj}`;
            try{
             responser =await axios.get(taker) 
             k=processProductData(responser.data,num)
+            console.log("Fetched from barcodelookup")
 
            }catch(err){
             j={error:"Failed to fetch from barcodelookup-api limit reached or invalid EAN"}
@@ -275,6 +275,7 @@ const barcodelookup=async(num)=>{
 
 const { getFirestore, collection, doc,query, where, getDocs ,getDoc} = require("firebase/firestore");
 const { db } = require("./firebase");
+const { title } = require("process");
 
 
 let uid=""
@@ -357,16 +358,64 @@ app.post('/fastapires', (req, res) => {
 //------------Main route accessed by esp32cam----------------//
 let final_Decision=""
 //middleware:-wifiverify
+// upar ensure: app.use(express.json());
+
+app.post('/NoBarcode', async (req, res) => {
+  try {
+    const { gemini_response, gemini_json, wifiid } = req.body;
+          console.log("You are inside No Barcode")
+    if (!gemini_response && !gemini_json) {
+      console.log("Nothing gemini respone and json")
+      return res.status(400).json({
+        error: 'Expected gemini_response or gemini_json in JSON body',
+      });
+    }
+
+    let productInfo;
+    if (gemini_json) {
+      productInfo = gemini_json;
+    } else {
+      try {
+        productInfo = JSON.parse(gemini_response);
+      } catch {
+        productInfo = { raw_text: gemini_response };
+      }
+    }
+
+
+    console.log(req.body);
+    console.log(productInfo);
+
+    const final_Decision = await compareWithStandards(productInfo,productStandard,userpref);
+    console.log(final_Decision);
+    return res.json({
+      message1: 'Decoding NoBarcode image to get product data',
+      message2: 'Fetching user preferences from database',
+      message3: 'Passing the result to gemini and Finalizing response...',
+      message4: 'Sending Response from server..',
+      final: final_Decision,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      message1: 'Trying to Decode NoBarcode image to get product data',
+      message2: 'Fetching user preferences from database',
+      message3: 'Trying to pass the result to gemini and Finalizing response...',
+      message4: `${err}`,
+      final: {title:"Error Occured", status:"error", alerts:[{desc:"Failed to process the data. Please try again.", flag:"not safe"}]},
+    });
+  }
+});
 app.get('/nutri', async (req, res) => {
   const ean = req.query.ean;
   const wifiid = req.query.wifiid;
   console.log(ean)
   console.log(uid)
+   console.log("You are inside nutri")
   
-  
+  /*
   try {
     
-   
     const userDocRef = doc(db, "neutriData", uid); // xyz = your scan/data collection
     const userDocSnap = await getDoc(userDocRef);
     
@@ -382,11 +431,11 @@ app.get('/nutri', async (req, res) => {
   } catch (err) {
     console.error("Error fetching user data about userpreference", err);
     res.status(500).json({ message: "Server error" });
-  } 
+  } */
   try {
     z=await barcodelookup(`${ean}`)
     console.log(z)
-    final_Decision=await compareWithStandards(z,productStandard,data)
+    final_Decision=await compareWithStandards(z,productStandard,userpref)
     console.log(final_Decision)
     res.json({
       message1:"Fetching product info using EAN from Barcodelookup",
@@ -399,9 +448,12 @@ app.get('/nutri', async (req, res) => {
   }
   catch (err) {
     res.json({
-      error:`Failed to find/evaluate-${err}`
+      message1: 'Trying to fetch product info using EAN from Barcodelookup',
+      message2: 'Fetching user preferences from database',
+      message3: 'Trying to pass the result to gemini and Finalizing response...',
+      message4: `${err}`,
+      final: {title:"Error Occured", status:"error", alerts:[{desc:"Failed to process the data. Please try again.", flag:"not safe"}]},
     })
-
   }
 
 
