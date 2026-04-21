@@ -2,14 +2,7 @@
 
 This is the backend system for the NutriScan wearable project. It handles barcode-based food product analysis by decoding the EAN number, fetching product details, and matching ingredients with user-specific dietary restrictions. This backend is built with **Node.js**, **Express.js**, and integrates with **Firebase** for user data and result storage.
 
----
 
-
-## 🚀 Live Server
-
-🔗 Hosted API: [https://nutriscan-backend-api.onrender.com](https://nutriscan-backend-api.onrender.com)
-
----
 
 ## 🛠️ Tech Stack
 
@@ -24,10 +17,9 @@ This is the backend system for the NutriScan wearable project. It handles barcod
 
 ## 🧪 Key Functionalities
 
-- `/fastapires` – Sets message during processing of barcode decoding via response obtained from fast api 
+
 - `/nutri` – Accepts decoded EAN + user Wi-Fi ID, fetches product info, matches ingredients and nutrition against the user’s dietary profile from Firebase.
-- `/faker` – for testing of barcode lookup api,processing and comaprision and not meant to be used
-- `/message` and `/nutro` – Used by frontend dashboard to fetch latest results and response messages.
+- `/NoBarcode` – POST route for products without barcodes; accepts image data (gemini_response or gemini_json) and wifiid, processes with Gemini AI, verifies user, and returns suitability analysis based on standards and user preferences.
 -`/`-simple frontend for testing pupose only not meant to be accessed
 ---
 ## Fake UI pics
