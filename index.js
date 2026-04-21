@@ -173,7 +173,7 @@ Output Format (Strictly JSON, nothing else):
 
 async function processProductData(response,num) {
   if(!response.products){
-    const findfromEan=`Search the product with EAN ${num} from OpenFoodFacts, BarcodeLookup and similar public databases to identify its name, common ingredients, and nutritional information as of 2025.Only output json object
+    const findfromEan=`Search the product with EAN ${num} from OpenFoodFacts, BarcodeLookup and similar public databases or googleto identify its name, common ingredients, and nutritional information as of 2025.Only output json object
     {"title":"<product name from ean search>",
     "size":"<typical size if available>",
     "imageUrl":"<product image url if available>",
@@ -182,7 +182,8 @@ async function processProductData(response,num) {
       "list": "<ingredientsList>"  //an array of ingredients
     },
     "EAN":"<EAN number used for search>"
-  }`
+  }
+  -Dont hallucinate and generate wrong output and consider whats given`
     const aiResp = await gem(findfromEan);
     const its=await parsing(aiResp)
     //console.log(findfromEan)
@@ -250,7 +251,7 @@ const barcodelookup=async(num)=>{
            const randomkey = Math.floor(Math.random() * 4);
            const keyz=keys[randomkey]
            console.log("Barcodelookup key used")
-           let taker="https://api.barcodelookup.com/v3/products?barcode="+`${num}`+`&formatted=y&key=${process.env.yashraj}`;
+           let taker="https://api.barcodelookup.com/v3/products?barcode="+`${num}`+`&formatted=y&key=${process.env.tarun}`;
            try{
             responser =await axios.get(taker) 
             k=processProductData(responser.data,num)
@@ -273,48 +274,100 @@ const barcodelookup=async(num)=>{
 
 //-----------------------------------------------------------------------------------------------------------//
 
-const { getFirestore, collection, doc,query, where, getDocs ,getDoc} = require("firebase/firestore");
 const { db } = require("./firebase");
 const { title } = require("process");
 
 
 let uid=""
+let userPreferences={}
 //------------Wifiverification middleware for esp32cam----------------//
 
 const wifiverify = async function (req, res, next) {
-  const wifiid = req.query.wifiid;
-  console.log(wifiid)
-  if (!wifiid) {
-    message="wifiid is required!"
-    return res.status(400).json({ message: "wifiid is required!" });
+  const wifiPassword = req.query.wifiid || req.body.wifiid;
+  console.log(wifiPassword)
+  if (!wifiPassword) {
+   
+    return res.json({
+      message1: 'Wifi verification in progress..',
+      message2: 'Fetching details from database',
+      message3: 'matching wifiid with database records..',
+      message4: 'Sending Response from server..',
+      final: {title:"Error Occured", status:"error", alerts:[{desc:"Wifiid verification failed the password is required", flag:"not safe"}]},
+    });
   }
 
   try {
-    const usersRef = collection(db, "wifiPasswords");
-    console.log(usersRef)
-    const q = query(usersRef, where("wifiPassword", "==", wifiid));
-    console.log(q)
-    const querySnapshot = await getDocs(q);
+    const deviceSnapshot = await db.collection("device")
+      .where("wifiPassword", "==", wifiPassword)
+      .get();
 
-    if (querySnapshot.empty) {
-      message="User with given wifiid not found!"
-      return res.status(404).json({ message: "User with given wifiid not found!" });
+    if (deviceSnapshot.empty) {
+      return res.json({
+      message1: 'Wifi verification in progress..',
+      message2: 'Fetching details from database',
+      message3: 'matching wifiid with database records..',
+      message4: 'Sending Response from server..',
+      final: {title:"Error Occured", status:"error", alerts:[{desc:"User with given wifiid not found!", flag:"not safe"}]},
+    });
     }
 
-    const userDoc = querySnapshot.docs[0];
-    const userData = userDoc.data();
-    uid = userData.userId;  // This is the UID of the user
-    console.log("my uid"+uid)
-    //console.log("my doc"+userData)
-    // Attach UID and user data to request for next route
+    const deviceDoc = deviceSnapshot.docs[0];
+    const foundUid = deviceDoc.id;
+    uid = foundUid;
+    console.log("found uid: " + foundUid)
 
+    const prefsSnapshot = await db.collection("preferences")
+      .where("uid", "==", foundUid)
+      .get();
+
+    if (prefsSnapshot.empty) {
+      req.uid = foundUid;
+      req.userPreferences = {};
+      console.log("no preferences found, using empty object");
+      return next();
+    }
+
+    const normalized = (value) => {
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (/^\[.*\]$/.test(trimmed)) {
+          try {
+            return JSON.parse(trimmed);
+          } catch (_) {}
+        }
+        if (!Number.isNaN(Number(trimmed))) {
+          return Number(trimmed);
+        }
+        if (trimmed.includes(",")) {
+          return trimmed.split(",").map((item) => item.trim()).filter(Boolean);
+        }
+      }
+      return value;
+    };
+
+    const combinedPrefs = {};
+    prefsSnapshot.docs.forEach((docSnap) => {
+      const pref = docSnap.data();
+      if (!pref.name || pref.amount === undefined) return;
+
+      const key = pref.name;
+      combinedPrefs[key] = normalized(pref.amount);
+    });
+
+    req.uid = foundUid;
+    req.userPreferences = combinedPrefs;
+    console.log("combined preferences:", combinedPrefs);
     next();
-
   } catch (err) {
     console.error("Firestore error:", err);
     message="Internal server error"
-
-    return res.status(500).json({ message: "Internal server error" });
+    return res.json({
+      message1: 'Wifi verification in progress..',
+      message2: 'Fetching details from database',
+      message3: 'matching wifiid with database records..',
+      message4: 'Sending Response from server..',
+      final: {title:"Error Occured", status:"error", alerts:[{desc:`Firestore error:${err}`, flag:"not safe"}]},
+    });
   }
 };
 
@@ -360,15 +413,20 @@ let final_Decision=""
 //middleware:-wifiverify
 // upar ensure: app.use(express.json());
 
-app.post('/NoBarcode', async (req, res) => {
+app.post('/NoBarcode',wifiverify, async (req, res) => {
   try {
     const { gemini_response, gemini_json, wifiid } = req.body;
           console.log("You are inside No Barcode")
     if (!gemini_response && !gemini_json) {
       console.log("Nothing gemini respone and json")
-      return res.status(400).json({
-        error: 'Expected gemini_response or gemini_json in JSON body',
-      });
+      return res.status(500).json({
+      message1: 'Trying to Decode NoBarcode image to get product data',
+      message2: 'Fetching user preferences from database',
+      message3: 'Trying to pass the result to gemini and Finalizing response...',
+      message4: "Nothing gemini respone and json",
+      final: {title:"Error Occured", status:"error", alerts:[{desc:"Nothing recieved no gemini respone and json", flag:"not safe"}]},
+    });
+      
     }
 
     let productInfo;
@@ -386,7 +444,7 @@ app.post('/NoBarcode', async (req, res) => {
     console.log(req.body);
     console.log(productInfo);
 
-    const final_Decision = await compareWithStandards(productInfo,productStandard,userpref);
+    const final_Decision = await compareWithStandards(productInfo,productStandard,req.userPreferences);
     console.log(final_Decision);
     return res.json({
       message1: 'Decoding NoBarcode image to get product data',
@@ -406,12 +464,12 @@ app.post('/NoBarcode', async (req, res) => {
     });
   }
 });
-app.get('/nutri', async (req, res) => {
+app.get('/nutri',wifiverify ,async (req, res) => {
   const ean = req.query.ean;
   const wifiid = req.query.wifiid;
   console.log(ean)
   console.log(uid)
-   console.log("You are inside nutri")
+  console.log("You are inside nutri")
   
   /*
   try {
@@ -435,7 +493,7 @@ app.get('/nutri', async (req, res) => {
   try {
     z=await barcodelookup(`${ean}`)
     console.log(z)
-    final_Decision=await compareWithStandards(z,productStandard,userpref)
+    final_Decision=await compareWithStandards(z,productStandard,req.userPreferences)
     console.log(final_Decision)
     res.json({
       message1:"Fetching product info using EAN from Barcodelookup",
